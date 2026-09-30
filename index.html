@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>CropSense AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;800&family=Nunito+Sans:wght@400;600;700&family=Noto+Sans+Tamil:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--soil:#2b2118;--leaf:#2f6b3a;--paddy:#eef2e3;--card:#fff;--green:#3c8d4a;--amber:#d9a21b;--red:#b8402f;--mut:#6b6558}
+*{box-sizing:border-box}
+body{margin:0;padding-top:env(safe-area-inset-top,0px);font:16px/1.5 'Nunito Sans','Noto Sans Tamil',system-ui,sans-serif;background:var(--paddy);color:var(--soil)}
+h1,h2,h3{font-family:Fraunces,'Noto Sans Tamil',Georgia,serif;margin:.2em 0}
+#app{max-width:520px;margin:0 auto;min-height:100vh;padding:16px 16px 90px}
+.center{text-align:center;padding-top:22vh}
+.logo{font-family:Fraunces,serif;font-weight:800;font-size:2.4rem;color:var(--leaf)}
+.card{background:var(--card);border-radius:14px;padding:16px;margin:12px 0;border:1px solid #d9dcc8}
+input,select{width:100%;padding:12px;margin:6px 0;border:1px solid #b9bea5;border-radius:10px;font:inherit;background:#fff}
+button{font:inherit;font-weight:700;border:0;border-radius:10px;padding:12px 16px;background:var(--leaf);color:#fff;cursor:pointer;width:100%;margin-top:8px}
+button.alt{background:#fff;color:var(--leaf);border:2px solid var(--leaf)}
+button.link{background:none;color:var(--leaf);width:auto;padding:4px;text-decoration:underline}
+button.icon{width:44px;flex:0 0 44px;padding:10px;font-size:1.1rem}
+.row{display:flex;gap:8px;align-items:stretch}
+.err{color:var(--red);font-weight:700;min-height:1.4em}.ok{color:var(--green);font-weight:700}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tile{background:var(--paddy);border-radius:10px;padding:10px}.tile b{display:block;font-size:1.4rem}
+.green{color:var(--green)}.amber{color:var(--amber)}.red{color:var(--red)}
+.big{font:800 3rem Fraunces,serif;line-height:1}
+.dec{font:800 1.8rem Fraunces,serif}
+.zone{padding:18px 8px;border-radius:12px;color:#fff;text-align:center;font-weight:700;border:3px solid transparent;margin:0}
+.zone.sel{border-color:var(--soil)}
+.bg-green{background:var(--green)}.bg-amber{background:var(--amber)}.bg-red{background:var(--red)}
+nav{position:fixed;bottom:0;padding-bottom:calc(6px + env(safe-area-inset-bottom,0px))!important;left:0;right:0;background:var(--soil);display:flex;overflow-x:auto;padding:6px}
+nav button{background:none;width:auto;white-space:nowrap;margin:0;padding:10px 12px;color:#cfc8b8;font-size:.9rem}
+nav button.on{color:#fff;background:var(--leaf)}
+.bubble{padding:10px 12px;border-radius:12px;margin:6px 0;max-width:85%;position:relative}
+.me{background:var(--leaf);color:#fff;margin-left:auto}.ai{background:var(--paddy)}
+.spk{background:none;color:var(--leaf);width:auto;padding:2px 6px;margin:2px 0 0;font-size:.85rem}
+.alert{border-left:6px solid var(--amber);cursor:pointer}.alert.red{border-color:var(--red)}
+small,.mut{color:var(--mut)}
+svg{width:100%;height:110px}
+.statrow{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center;margin-top:8px}
+.statrow div{background:var(--paddy);border-radius:10px;padding:8px}
+.mic.on{background:var(--red)}
+@media(prefers-reduced-motion:no-preference){.fade{animation:f .8s}@keyframes f{from{opacity:0}}}
+</style></head>
+<body><div id="app"></div>
+<script>
+/* ---------- helpers ---------- */
+const $=s=>document.querySelector(s), app=$('#app');
+const LS=k=>{try{return JSON.parse(localStorage.getItem(k)||'null')}catch(e){return null}}, SS=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
+const users=()=>LS('cs_users')||[];
+const saveUser=u=>{SS('cs_users',users().filter(x=>x.email!==u.email).concat(u))};
+const errEl=()=>$('#e');
+const err=m=>{const e=errEl();if(e)e.textContent=m};
+const val=id=>$('#'+id).value.trim();
+
+/* ---------- language ---------- */
+let LANG=LS('lang')||'en';
+const TR={en:{
+appName:'CropSense AI',tagline:'Predict. Protect. Grow.',loading:'Loading…',
+login:'Login',emailOrPhone:'Email or phone number',password:'Password',showHide:'👁 Show / hide password',
+forgot:'Forgot password?',newFarmer:'New farmer? Create account',createAccount:'Create account',
+fullName:'Full name',mobile:'Mobile number',email:'Email',passMin:'Password (min 8 characters)',
+confirmPass:'Confirm password',backLogin:'Back to login',
+verifyTitle:'Verify your account',verifySub:'We sent a 6-digit OTP to your mobile/email.',demoOtp:'Demo OTP',
+enterOtp:'Enter OTP',verify:'Verify',verifiedOk:'✅ Account verified successfully.',continueFarm:'Continue to farm setup',
+setupFarm:'Set up your farm',farmName:'Farm name',location:'Location',farmSize:'Farm size (acres)',
+cropType:'Crop type (e.g. Tomato)',saveFarm:'Save farm',
+welcome:'Welcome',navHome:'🏠 Home',navAna:'🤖 Analysis',navMap:'🗺 Risk map',navScan:'📸 Scan',navFc:'📅 Forecast',
+navSim:'🔬 What-if',navAl:'🔔 Alerts',navChat:'💬 Assistant',navHis:'📊 History',navPro:'👤 Profile',
+curCond:'🌡 Current farm conditions',temperature:'Temperature',humidity:'Humidity',soilMoisture:'Soil moisture',
+rainProb:'Rain probability',cropHealth:'🌱 Crop health',aiPrediction:'AI prediction',
+possibleStress24:'Possible crop stress within 24 hours.',noImmediateStress:'No immediate crop stress expected.',
+aiRecTitle:'💧 AI recommendation',viewAnalysis:'View analysis',riskMapBtn:'Farm risk map',
+poor:'POOR 🔴',moderate:'MODERATE 🟡',good:'GOOD 🟢',
+recWater:'Soil moisture is low and rainfall probability is low.',recWait:'Rain expected or soil moisture is sufficient.',recWatch:'Keep monitoring conditions.',
+cropStressRisk:'Crop stress risk',expectedWithin:'Expected within',h24:'24 hours',h48:'48 hours',h72:'72+ hours',
+srcNote:'Weather + soil + crop + history',whyTitle:'Why is my crop at risk?',noRiskFactors:'No major risk factors right now.',
+decisionTitle:'Decision',decHelp:'WATER: irrigate. WAIT: rain expected or soil wet enough. WATCH: no action, keep monitoring.',
+irrigateWithin:'Irrigate Zone {n} within 12 hours.',noActionNeeded:'No action needed.',
+farmRiskMap:'Farm risk map',zone:'Zone',lowRisk:'Low risk',medRisk:'Medium risk',highRisk:'High risk',
+howZones:'How zones are worked out',howZonesBody:'Each zone is one area of your farm with its own soil-moisture and temperature reading. The same risk formula runs separately for every zone, so a shaded, well-watered corner can show Low risk while a sunnier, drier corner shows High risk on the same day.',
+scanTitle:'Scan your crop',choosePhoto:'📷 Choose crop photo',sampleLeaf:'Try a sample leaf',
+scanNote:'Demo: measures how much of the leaf is not green, then blends it with soil + weather risk.',
+analysing:'Analysing…',noFileChosen:'No file chosen.',couldNotRead:'Could not read this file.',invalidImage:'Please choose a valid image (JPG/PNG).',
+possibleStressDetected:'Possible stress detected',leafHealthy:'Leaf looks mostly healthy',overallRisk:'Overall crop risk',
+leafStressDetected:'Leaf stress detected',analysisFailed:'Analysis failed',
+forecastTitle:'5-day crop stress forecast',plan:'Plan',
+planBody:'💧 Irrigate today. 🌧 Skip tomorrow — rain is likely (70%). ⚠️ Stress climbs again by Day 5, so irrigate on the evening of Day 4.',
+whatIf:'What-if simulator',simulate:'Simulate',currentRisk:'Current risk',predictedRisk:'Predicted risk',
+incRisk:'⚠️ These changes increase crop stress risk.',decRisk:'✅ These changes reduce crop stress risk.',
+noAlerts:'No alerts. Your farm is stable.',alertStress:'⚠️ Crop stress alert',alertStressBody:'Zone {n} may experience high crop stress within 24 hours.',
+alertWater:'💧 Water alert',alertWaterBody:'Zone {n} has low soil moisture ({m}%).',
+alertRain:'🌧 Rain alert',alertRainBody:'Rain expected within 12 hours. Irrigation may not be required.',
+askPlaceholder:'Ask about your farm',send:'Send',listening:'Listening…',
+greetChat:'Hi! Ask me about your farm — e.g. "Should I water today?" or "Why is Zone 3 red?"',
+micUnsupported:'Voice input is not supported in this browser.',
+historyTitle:'Farm history (7 days)',waterSaved:'Water saved this month',
+soilMoistureChart:'Soil moisture (%)',stressRiskChart:'Crop stress risk (%)',waterUsageChart:'Water usage (L)',
+avg:'Average',best:'Best day',worst:'Needs attention',exportCsv:'⬇ Export as CSV',day:'Day',
+profileTitle:'Profile',farmSettings:'Farm settings',editFarm:'Edit farm',appSettings:'App settings',
+notifications:'Notifications',voiceAssist:'Auto-read assistant replies aloud',logout:'Logout',language:'Language',
+errEmail:'Please enter your email or phone.',errPassword:'Please enter your password.',errInvalidLogin:'Invalid email or password.',
+errName:'Please enter your name.',errPhone:'Enter a valid 10-digit mobile number.',errEmailInvalid:'Enter a valid email.',
+errPassLen:'Password must contain at least 8 characters.',errPassMismatch:'Passwords do not match.',
+errExists:'An account with this email or phone already exists.',errOtp:'Incorrect OTP. Try again.',
+errFarmFields:'Please fill in farm name, location, size and crop.',forgotMsg:'Password reset: demo only — register a new account.',
+decWATER:'WATER',decWAIT:'WAIT',decWATCH:'WATCH',
+todayN:'Today',tomorrowN:'Tomorrow',day3N:'Day 3',day4N:'Day 4',day5N:'Day 5',
+howMoisture:'How soil moisture is calculated',
+howMoistureBody:'In this demo, soil moisture is a sample number, not a live sensor reading — it stands in for what a soil-moisture probe or satellite soil index would report. The stress score then blends it with temperature and rain probability: low moisture + high temperature + little rain pushes the risk score up; damp soil or rain in the forecast pulls it down.',
+},ta:{
+appName:'கிராப்சென்ஸ் AI',tagline:'கணிக்கவும். பாதுகாக்கவும். வளர்க்கவும்.',loading:'ஏற்றுகிறது…',
+login:'உள்நுழைக',emailOrPhone:'மின்னஞ்சல் அல்லது தொலைபேசி எண்',password:'கடவுச்சொல்',showHide:'👁 கடவுச்சொல்லைக் காட்டு/மறை',
+forgot:'கடவுச்சொல் மறந்துவிட்டதா?',newFarmer:'புதிய விவசாயியா? கணக்கை உருவாக்கவும்',createAccount:'கணக்கை உருவாக்கவும்',
+fullName:'முழு பெயர்',mobile:'மொபைல் எண்',email:'மின்னஞ்சல்',passMin:'கடவுச்சொல் (குறைந்தது 8 எழுத்துகள்)',
+confirmPass:'கடவுச்சொல்லை உறுதிப்படுத்தவும்',backLogin:'உள்நுழைவுக்குத் திரும்பு',
+verifyTitle:'உங்கள் கணக்கை உறுதிப்படுத்தவும்',verifySub:'உங்கள் மொபைல்/மின்னஞ்சலுக்கு 6 இலக்க OTP அனுப்பப்பட்டுள்ளது.',demoOtp:'டெமோ OTP',
+enterOtp:'OTP-ஐ உள்ளிடவும்',verify:'உறுதிப்படுத்து',verifiedOk:'✅ கணக்கு வெற்றிகரமாக உறுதிப்படுத்தப்பட்டது.',continueFarm:'பண்ணை அமைப்புக்குச் செல்லவும்',
+setupFarm:'உங்கள் பண்ணையை அமைக்கவும்',farmName:'பண்ணையின் பெயர்',location:'இடம்',farmSize:'பண்ணை பரப்பளவு (ஏக்கர்)',
+cropType:'பயிர் வகை (எ.கா. தக்காளி)',saveFarm:'பண்ணையைச் சேமிக்கவும்',
+welcome:'வணக்கம்',navHome:'🏠 முகப்பு',navAna:'🤖 பகுப்பாய்வு',navMap:'🗺 அபாய வரைபடம்',navScan:'📸 ஸ்கேன்',navFc:'📅 முன்னறிவிப்பு',
+navSim:'🔬 என்ன-என்றால்',navAl:'🔔 எச்சரிக்கைகள்',navChat:'💬 உதவியாளர்',navHis:'📊 வரலாறு',navPro:'👤 சுயவிவரம்',
+curCond:'🌡 தற்போதைய பண்ணை நிலைமைகள்',temperature:'வெப்பநிலை',humidity:'ஈரப்பதம்',soilMoisture:'மண் ஈரப்பதம்',
+rainProb:'மழை நிகழ்தகவு',cropHealth:'🌱 பயிர் ஆரோக்கியம்',aiPrediction:'AI கணிப்பு',
+possibleStress24:'24 மணி நேரத்திற்குள் பயிர் அழுத்தம் ஏற்படக்கூடும்.',noImmediateStress:'உடனடி பயிர் அழுத்தம் எதிர்பார்க்கப்படவில்லை.',
+aiRecTitle:'💧 AI பரிந்துரை',viewAnalysis:'பகுப்பாய்வைக் காண்க',riskMapBtn:'பண்ணை அபாய வரைபடம்',
+poor:'மோசம் 🔴',moderate:'மிதமானது 🟡',good:'நல்லது 🟢',
+recWater:'மண் ஈரப்பதம் குறைவாகவும் மழை நிகழ்தகவு குறைவாகவும் உள்ளது.',recWait:'மழை எதிர்பார்க்கப்படுகிறது அல்லது மண் ஈரப்பதம் போதுமானது.',recWatch:'நிலைமைகளைக் கண்காணிக்கவும்.',
+cropStressRisk:'பயிர் அழுத்த அபாயம்',expectedWithin:'எதிர்பார்க்கப்படும் காலம்',h24:'24 மணி நேரம்',h48:'48 மணி நேரம்',h72:'72+ மணி நேரம்',
+srcNote:'வானிலை + மண் + பயிர் + வரலாறு',whyTitle:'எனது பயிர் ஏன் அபாயத்தில் உள்ளது?',noRiskFactors:'இப்போது பெரிய ஆபத்து காரணிகள் இல்லை.',
+decisionTitle:'முடிவு',decHelp:'நீர் ஊற்று: பாசனம் செய்யவும். காத்திரு: மழை/ஈரப்பதம் போதுமானது. கவனி: நடவடிக்கை தேவையில்லை, கண்காணிக்கவும்.',
+irrigateWithin:'மண்டலம் {n}-ஐ 12 மணி நேரத்திற்குள் பாசனம் செய்யவும்.',noActionNeeded:'நடவடிக்கை தேவையில்லை.',
+farmRiskMap:'பண்ணை அபாய வரைபடம்',zone:'மண்டலம்',lowRisk:'குறைந்த அபாயம்',medRisk:'நடுத்தர அபாயம்',highRisk:'அதிக அபாயம்',
+howZones:'மண்டலங்கள் எவ்வாறு பிரிக்கப்படுகின்றன',howZonesBody:'ஒவ்வொரு மண்டலமும் உங்கள் பண்ணையின் ஒரு பகுதி, அதற்கென தனி மண் ஈரப்பதம் மற்றும் வெப்பநிலை அளவீடு உள்ளது. அதே அபாய சூத்திரம் ஒவ்வொரு மண்டலத்திற்கும் தனித்தனியாக இயங்குகிறது, எனவே நிழலான, நன்கு நீர்ப்பாசனம் செய்யப்பட்ட ஒரு மூலை குறைந்த அபாயத்தையும், வெயிலான, வறண்ட மூலை அதே நாளில் அதிக அபாயத்தையும் காட்டலாம்.',
+scanTitle:'உங்கள் பயிரை ஸ்கேன் செய்யவும்',choosePhoto:'📷 பயிர் புகைப்படத்தைத் தேர்வு செய்யவும்',sampleLeaf:'மாதிரி இலையை முயற்சிக்கவும்',
+scanNote:'டெமோ: இலையில் பசுமையற்ற பகுதியை அளவிட்டு, மண் + வானிலை அபாயத்துடன் இணைக்கிறது.',
+analysing:'பகுப்பாய்வு செய்கிறது…',noFileChosen:'கோப்பு எதுவும் தேர்ந்தெடுக்கப்படவில்லை.',couldNotRead:'இந்த கோப்பைப் படிக்க முடியவில்லை.',invalidImage:'சரியான படத்தைத் தேர்வு செய்யவும் (JPG/PNG).',
+possibleStressDetected:'அழுத்தம் இருக்கக்கூடும்',leafHealthy:'இலை பெரும்பாலும் ஆரோக்கியமாக உள்ளது',overallRisk:'மொத்த பயிர் அபாயம்',
+leafStressDetected:'இலை அழுத்தம் கண்டறியப்பட்டது',analysisFailed:'பகுப்பாய்வு தோல்வியடைந்தது',
+forecastTitle:'5-நாள் பயிர் அழுத்த முன்னறிவிப்பு',plan:'திட்டம்',
+planBody:'💧 இன்று பாசனம் செய்யவும். 🌧 நாளை தவிர்க்கவும் — மழை வாய்ப்பு (70%). ⚠️ நாள் 5-ல் அழுத்தம் மீண்டும் அதிகரிக்கும், எனவே நாள் 4 மாலையில் பாசனம் செய்யவும்.',
+whatIf:'என்ன-என்றால் உருவகப்படுத்தி',simulate:'உருவகப்படுத்து',currentRisk:'தற்போதைய அபாயம்',predictedRisk:'கணிக்கப்பட்ட அபாயம்',
+incRisk:'⚠️ இந்த மாற்றங்கள் பயிர் அழுத்த அபாயத்தை அதிகரிக்கும்.',decRisk:'✅ இந்த மாற்றங்கள் பயிர் அழுத்த அபாயத்தைக் குறைக்கும்.',
+noAlerts:'எச்சரிக்கைகள் இல்லை. உங்கள் பண்ணை நிலையானது.',alertStress:'⚠️ பயிர் அழுத்த எச்சரிக்கை',alertStressBody:'மண்டலம் {n} 24 மணி நேரத்திற்குள் அதிக பயிர் அழுத்தத்தை அடையலாம்.',
+alertWater:'💧 நீர் எச்சரிக்கை',alertWaterBody:'மண்டலம் {n}-இல் மண் ஈரப்பதம் குறைவாக உள்ளது ({m}%).',
+alertRain:'🌧 மழை எச்சரிக்கை',alertRainBody:'12 மணி நேரத்திற்குள் மழை எதிர்பார்க்கப்படுகிறது. பாசனம் தேவைப்படாமல் போகலாம்.',
+askPlaceholder:'உங்கள் பண்ணையைப் பற்றி கேளுங்கள்',send:'அனுப்பு',listening:'கேட்கிறது…',
+greetChat:'வணக்கம்! உங்கள் பண்ணையைப் பற்றி கேளுங்கள் — எ.கா. "இன்று தண்ணீர் ஊற்ற வேண்டுமா?" அல்லது "மண்டலம் 3 ஏன் சிவப்பு?"',
+micUnsupported:'இந்த உலாவியில் குரல் உள்ளீடு ஆதரிக்கப்படவில்லை.',
+historyTitle:'பண்ணை வரலாறு (7 நாட்கள்)',waterSaved:'இந்த மாதம் சேமிக்கப்பட்ட தண்ணீர்',
+soilMoistureChart:'மண் ஈரப்பதம் (%)',stressRiskChart:'பயிர் அழுத்த அபாயம் (%)',waterUsageChart:'நீர் பயன்பாடு (லிட்டர்)',
+avg:'சராசரி',best:'சிறந்த நாள்',worst:'கவனம் தேவை',exportCsv:'⬇ CSV ஆக பதிவிறக்கு',day:'நாள்',
+profileTitle:'சுயவிவரம்',farmSettings:'பண்ணை அமைப்புகள்',editFarm:'பண்ணையைத் திருத்து',appSettings:'செயலி அமைப்புகள்',
+notifications:'அறிவிப்புகள்',voiceAssist:'உதவியாளர் பதில்களை தானாக குரலில் படிக்கவும்',logout:'வெளியேறு',language:'மொழி',
+errEmail:'உங்கள் மின்னஞ்சல் அல்லது தொலைபேசி எண்ணை உள்ளிடவும்.',errPassword:'உங்கள் கடவுச்சொல்லை உள்ளிடவும்.',errInvalidLogin:'தவறான மின்னஞ்சல் அல்லது கடவுச்சொல்.',
+errName:'உங்கள் பெயரை உள்ளிடவும்.',errPhone:'சரியான 10 இலக்க மொபைல் எண்ணை உள்ளிடவும்.',errEmailInvalid:'சரியான மின்னஞ்சலை உள்ளிடவும்.',
+errPassLen:'கடவுச்சொல் குறைந்தது 8 எழுத்துகளைக் கொண்டிருக்க வேண்டும்.',errPassMismatch:'கடவுச்சொற்கள் பொருந்தவில்லை.',
+errExists:'இந்த மின்னஞ்சல் அல்லது தொலைபேசி எண்ணுடன் ஏற்கனவே ஒரு கணக்கு உள்ளது.',errOtp:'தவறான OTP. மீண்டும் முயற்சிக்கவும்.',
+errFarmFields:'பண்ணையின் பெயர், இடம், பரப்பளவு மற்றும் பயிரை நிரப்பவும்.',forgotMsg:'கடவுச்சொல் மீட்டமைப்பு: டெமோ மட்டும் — புதிய கணக்கை உருவாக்கவும்.',
+decWATER:'நீர் ஊற்று',decWAIT:'காத்திரு',decWATCH:'கவனி',
+todayN:'இன்று',tomorrowN:'நாளை',day3N:'நாள் 3',day4N:'நாள் 4',day5N:'நாள் 5',
+howMoisture:'மண் ஈரப்பதம் எவ்வாறு கணக்கிடப்படுகிறது',
+howMoistureBody:'இந்த டெமோவில், மண் ஈரப்பதம் ஒரு மாதிரி எண், நேரடி சென்சார் அளவீடு அல்ல — இது ஒரு மண் ஈரப்பத சோதனையோ செயற்கைக்கோள் தரவோ தரும் மதிப்பை பிரதிநிதித்துவப்படுத்துகிறது. அழுத்த மதிப்பெண் அதை வெப்பநிலை மற்றும் மழை நிகழ்தகவுடன் இணைக்கிறது: குறைந்த ஈரப்பதம் + அதிக வெப்பநிலை + குறைந்த மழை அபாயத்தை உயர்த்தும்; ஈரமான மண் அல்லது மழை முன்னறிவிப்பு அபாயத்தைக் குறைக்கும்.',
+}};
+const t=(k,v)=>{let s=(TR[LANG]&&TR[LANG][k])??TR.en[k]??k;if(v)for(const p in v)s=s.replace('{'+p+'}',v[p]);return s};
+const OPT_SOIL=[{en:'Red soil',ta:'சிவப்பு மண்'},{en:'Black soil',ta:'கரிசல் மண்'},{en:'Alluvial soil',ta:'வண்டல் மண்'},{en:'Sandy soil',ta:'மணல் மண்'},{en:'Clay soil',ta:'களிமண்'}];
+const OPT_IRR=[{en:'Drip',ta:'சொட்டு நீர்ப்பாசனம்'},{en:'Sprinkler',ta:'தெளிப்பு பாசனம்'},{en:'Flood',ta:'வெள்ள பாசனம்'},{en:'Rain-fed',ta:'மழை நீர் சார்ந்தது'}];
+const optLabel=(list,en)=>{const o=list.find(x=>x.en===en);return o?(o[LANG]||o.en):en};
+
+/* ---------- AI model (rule-based demo; replace with real ML/API) ---------- */
+const cl=x=>Math.max(0,Math.min(1,x));
+const risk=(t,m,r)=>Math.round(Math.min(100,125*(.35*cl((t-25)/15)+.45*cl((45-m)/35)+.2*cl(1-r/60))));
+const decide=(k,m,r)=>(r>=60||m>=60)?'WAIT':k>=60?'WATER':'WATCH';
+const col=k=>k>=60?'red':k>=35?'amber':'green';
+const ICON={WATER:'💧',WAIT:'⏳',WATCH:'👀'};
+const why=(tm,m,r)=>[tm>=32&&'🌡 '+t('temperature')+': '+tm+'°C',m<=35&&'💧 '+t('soilMoisture')+': '+m+'%',r<=25&&'🌧 '+t('rainProb')+': '+r+'%'].filter(Boolean);
+const E={t:34,m:30,r:15,h:62};
+const Z=[{n:1,t:31,m:52,r:15},{n:2,t:33,m:36,r:15},{n:3,t:35,m:24,r:12},{n:4,t:32,m:50,r:15}]
+  .map(z=>({...z,k:risk(z.t,z.m,z.r),d:decide(risk(z.t,z.m,z.r),z.m,z.r)}));
+const K=risk(E.t,E.m,E.r), D=decide(K,E.m,E.r);
+const F=[{d:'todayN',w:'☀️',t:E.t,m:E.m,r:E.r},{d:'tomorrowN',w:'🌧',t:32,m:34,r:70},{d:'day3N',w:'⛅',t:30,m:52,r:45},{d:'day4N',w:'☀️',t:33,m:42,r:20},{d:'day5N',w:'☀️',t:36,m:30,r:10}]
+  .map(x=>({...x,k:risk(x.t,x.m,x.r),a:decide(risk(x.t,x.m,x.r),x.m,x.r)}));
+
+/* ---------- state ---------- */
+let U=null,tab='home',sel=3,pending=null,otp='',listening=false;
+let chat=[{ai:1,t:t('greetChat')}];
+function go(v){({splash,login,register,verify,farm,main})[v]()}
+
+/* ---------- 1 splash ---------- */
+function splash(){
+  app.innerHTML=`<div class="center fade"><div class="logo">🌱 ${t('appName')}</div><p>${t('tagline')}</p><p class="mut">${t('loading')}</p></div>`;
+  setTimeout(()=>{const e=LS('cs_session');U=users().find(u=>u.email===e)||null;U?go(U.farm?'main':'farm'):go('login')},1800);
+}
+/* ---------- 2 login ---------- */
+function login(){
+  app.innerHTML=`<div class="center" style="padding-top:8vh"><div class="logo">🌱 ${t('appName')}</div></div>
+  <div class="card"><h2>${t('login')}</h2>
+  <input id="id" placeholder="${t('emailOrPhone')}" autocomplete="username">
+  <input id="pw" type="password" placeholder="${t('password')}" autocomplete="current-password">
+  <button class="link" onclick="pw.type=pw.type=='password'?'text':'password'">${t('showHide')}</button>
+  <p class="err" id="e"></p>
+  <button onclick="doLogin()">${t('login')}</button>
+  <button class="link" onclick="err(t('forgotMsg'))">${t('forgot')}</button>
+  <button class="alt" onclick="go('register')">${t('newFarmer')}</button></div>`;
+}
+function doLogin(){
+  const id=val('id'),pw=$('#pw').value;
+  if(!id)return err(t('errEmail'));
+  if(!pw)return err(t('errPassword'));
+  const u=users().find(x=>(x.email===id||x.phone===id)&&x.pw===btoa(pw));
+  if(!u)return err(t('errInvalidLogin'));
+  if(!u.verified){pending=u;return sendOtp()}
+  U=u;SS('cs_session',u.email);go(u.farm?'main':'farm');
+}
+/* ---------- 3 register ---------- */
+function register(){
+  app.innerHTML=`<div class="card"><h2>${t('createAccount')}</h2>
+  <input id="n" placeholder="${t('fullName')}"><input id="ph" placeholder="${t('mobile')}" inputmode="numeric">
+  <input id="em" placeholder="${t('email')}"><input id="p1" type="password" placeholder="${t('passMin')}">
+  <input id="p2" type="password" placeholder="${t('confirmPass')}"><p class="err" id="e"></p>
+  <button onclick="doReg()">${t('createAccount')}</button><button class="alt" onclick="go('login')">${t('backLogin')}</button></div>`;
+}
+function doReg(){
+  const n=val('n'),ph=val('ph'),em=val('em').toLowerCase(),p1=$('#p1').value,p2=$('#p2').value;
+  if(!n)return err(t('errName'));
+  if(!/^\d{10}$/.test(ph))return err(t('errPhone'));
+  if(!/^\S+@\S+\.\S+$/.test(em))return err(t('errEmailInvalid'));
+  if(p1.length<8)return err(t('errPassLen'));
+  if(p1!==p2)return err(t('errPassMismatch'));
+  if(users().some(u=>u.email===em||u.phone===ph))return err(t('errExists'));
+  pending={name:n,phone:ph,email:em,pw:btoa(p1),verified:false,farm:null};saveUser(pending);sendOtp();
+}
+/* ---------- 4 verify ---------- */
+function sendOtp(){otp=String(100000+Math.random()*900000|0);go('verify')}
+function verify(){
+  app.innerHTML=`<div class="card"><h2>${t('verifyTitle')}</h2><p>${t('verifySub')}</p>
+  <p class="tile">${t('demoOtp')}: <b>${otp}</b></p><input id="o" placeholder="${t('enterOtp')}" inputmode="numeric"><p class="err" id="e"></p>
+  <button onclick="doVerify()">${t('verify')}</button></div>`;
+}
+function doVerify(){
+  if(val('o')!==otp)return err(t('errOtp'));
+  pending.verified=true;saveUser(pending);U=pending;SS('cs_session',U.email);
+  app.innerHTML=`<div class="card"><p class="ok">${t('verifiedOk')}</p><button onclick="go('farm')">${t('continueFarm')}</button></div>`;
+}
+/* ---------- 5 farm setup ---------- */
+function farm(){
+  const f=U.farm||{};
+  app.innerHTML=`<div class="card"><h2>${t('setupFarm')}</h2>
+  <input id="fn" placeholder="${t('farmName')}" value="${f.name||''}"><input id="lo" placeholder="${t('location')}" value="${f.loc||''}">
+  <input id="sz" type="number" min="0.1" step="0.1" placeholder="${t('farmSize')}" value="${f.size||''}">
+  <input id="cr" placeholder="${t('cropType')}" value="${f.crop||''}">
+  <select id="so">${OPT_SOIL.map(s=>`<option value="${s.en}" ${f.soil==s.en?'selected':''}>${s[LANG]||s.en}</option>`).join('')}</select>
+  <select id="ir">${OPT_IRR.map(s=>`<option value="${s.en}" ${f.irr==s.en?'selected':''}>${s[LANG]||s.en}</option>`).join('')}</select>
+  <p class="err" id="e"></p><button onclick="saveFarm()">${t('saveFarm')}</button></div>`;
+}
+function saveFarm(){
+  const f={name:val('fn'),loc:val('lo'),size:val('sz'),crop:val('cr'),soil:$('#so').value,irr:$('#ir').value};
+  if(!f.name||!f.loc||!f.size||!f.crop)return err(t('errFarmFields'));
+  U.farm=f;saveUser(U);tab='home';go('main');
+}
+/* ---------- main app ---------- */
+function TABS(){return [['home',t('navHome')],['ana',t('navAna')],['map',t('navMap')],['scan',t('navScan')],['fc',t('navFc')],
+  ['sim',t('navSim')],['al',t('navAl')],['chat',t('navChat')],['his',t('navHis')],['pro',t('navPro')]]}
+function main(){
+  app.innerHTML=`<h2>${t('welcome')}, ${U.name} 👋</h2><h3>🌱 ${U.farm.name} <small>· ${U.farm.crop}, ${U.farm.loc}</small></h3><div id="v" class="fade"></div>
+  <nav>${TABS().map(([k,l])=>`<button class="${k==tab?'on':''}" onclick="tab='${k}';main()">${l}</button>`).join('')}</nav>`;
+  $('#v').innerHTML=V[tab]();
+  if(tab=='chat'){const i=$('#in');i.focus();i.addEventListener('keydown',e=>{if(e.key==='Enter')askFarm()});
+    $('#sendBtn').addEventListener('click',askFarm);
+    const mb=$('#micBtn');if(mb)mb.addEventListener('click',toggleMic);
+    document.querySelectorAll('.spk').forEach(b=>b.addEventListener('click',()=>speak(chat[+b.dataset.i].t)));}
+  if(tab=='scan'){$('#imgIn').addEventListener('change',e=>{$('#fname').textContent=e.target.files[0]?.name||'';scanImg(e.target)});$('#sampleBtn').addEventListener('click',sample)}
+  if(tab=='his')$('#csvBtn')?.addEventListener('click',exportCsv);
+  if(tab=='pro')$('#lg').addEventListener('change',e=>{LANG=e.target.value;SS('lang',LANG);chat.forEach(m=>{if(m.ai&&m.t===TR.en.greetChat||m.t===TR.ta.greetChat)m.t=t('greetChat')});main()});
+}
+const dec=(d,k)=>`<div class="dec ${col(k)}">${ICON[d]} ${t('dec'+d)}</div>`;
+const riskWord=k=>k>=60?t('highRisk'):k>=35?t('medRisk'):t('lowRisk');
+const V={
+home:()=>`<div class="card"><h3>${t('curCond')}</h3><div class="grid">
+ <div class="tile">${t('temperature')}<b>${E.t}°C</b></div><div class="tile">${t('humidity')}<b>${E.h}%</b></div>
+ <div class="tile">${t('soilMoisture')}<b>${E.m}%</b></div><div class="tile">${t('rainProb')}<b>${E.r}%</b></div></div></div>
+ <div class="card"><h3>${t('cropHealth')}</h3><b class="${col(K)}">${K>=60?t('poor'):K>=35?t('moderate'):t('good')}</b>
+ <p class="mut">${t('aiPrediction')}</p><div class="big ${col(K)}">${K}%</div><p>${K>=60?t('possibleStress24'):t('noImmediateStress')}</p></div>
+ <div class="card"><h3>${t('aiRecTitle')}</h3>${dec(D,K)}
+ <p>${D=='WATER'?t('recWater'):D=='WAIT'?t('recWait'):t('recWatch')}</p>
+ <button onclick="tab='ana';main()">${t('viewAnalysis')}</button><button class="alt" onclick="tab='map';main()">${t('riskMapBtn')}</button></div>`,
+ana:()=>`<div class="card"><h3>${t('cropStressRisk')}</h3><div class="big ${col(K)}">${K}%</div>
+ <p>${t('expectedWithin')}: <b>${K>=60?t('h24'):K>=35?t('h48'):t('h72')}</b></p><small>${t('srcNote')}</small></div>
+ <div class="card"><h3>${t('whyTitle')}</h3>${why(E.t,E.m,E.r).map(x=>`<p>${x}</p>`).join('')||`<p>${t('noRiskFactors')}</p>`}</div>
+ <div class="card"><h3>${t('decisionTitle')}</h3>${dec(D,K)}<p class="mut">${t('decHelp')}</p>
+ ${(w=>`<p>${t('zone')} ${w.n} — ${t('dec'+w.d)}: ${t('soilMoisture')} ${w.m}%, ${t('rainProb')} ${w.r}%, ${t('cropStressRisk')} ${w.k}%.<br><b>${w.d=='WATER'?t('irrigateWithin',{n:w.n}):t('noActionNeeded')}</b></p>`)([...Z].sort((a,b)=>b.k-a.k)[0])}</div>`,
+map:()=>{const z=Z[sel-1];return `<div class="card"><h3>${t('farmRiskMap')}</h3><div class="grid">
+ ${Z.map(x=>`<button class="zone bg-${col(x.k)} ${x.n==sel?'sel':''}" onclick="sel=${x.n};main()">${t('zone')} ${x.n}<br>${riskWord(x.k)}</button>`).join('')}</div></div>
+ <div class="card"><h3>${t('zone')} ${z.n}</h3><p>${t('soilMoisture')}: ${z.m}%<br>${t('temperature')}: ${z.t}°C<br>${t('cropStressRisk')}: <b class="${col(z.k)}">${z.k}%</b><br>${t('rainProb')}: ${z.r}%</p>${dec(z.d,z.k)}</div>
+ <div class="card"><h3>ℹ️ ${t('howZones')}</h3><p class="mut">${t('howZonesBody')}</p></div>`},
+scan:()=>`<div class="card"><h3>${t('scanTitle')}</h3>
+ <label for="imgIn" style="display:block;text-align:center;background:var(--leaf);color:#fff;padding:14px;border-radius:10px;font-weight:700;cursor:pointer">${t('choosePhoto')}</label>
+ <input id="imgIn" type="file" accept="image/*" style="display:none"><p id="fname" class="mut"></p>
+ <button class="alt" id="sampleBtn">${t('sampleLeaf')}</button>
+ <canvas id="cv" width="64" height="64" hidden></canvas><div id="sr"></div>
+ <small>${t('scanNote')}</small></div>`,
+fc:()=>`<div class="card"><h3>${t('forecastTitle')}</h3>
+ <div style="display:flex;gap:6px;align-items:flex-end;height:150px;margin:10px 0">${F.map(x=>`<div style="flex:1;text-align:center;font-size:.8rem"><b>${x.k}%</b>
+ <div class="bg-${col(x.k)}" style="height:${Math.max(8,x.k)}px;border-radius:6px 6px 0 0"></div>${x.w}<br>${t(x.d)}</div>`).join('')}</div></div>
+ ${F.map(x=>`<div class="card"><b class="${col(x.k)}">${x.w} ${t(x.d)} — ${riskWord(x.k)}</b><br>
+ 🌡 ${x.t}°C · 💧 ${x.m}% · 🌧 ${x.r}%<br>${t('decisionTitle')}: <b>${ICON[x.a]} ${t('dec'+x.a)}</b></div>`).join('')}
+ <div class="card"><b>${t('plan')}</b><p>${t('planBody')}</p></div>`,
+sim:()=>`<div class="card"><h3>${t('whatIf')}</h3>
+ <label>${t('temperature')}: <b id="a1">${E.t}</b>°C</label><input id="s1" type="range" min="20" max="45" value="${E.t}" oninput="a1.textContent=this.value">
+ <label>${t('soilMoisture')}: <b id="a2">${E.m}</b>%</label><input id="s2" type="range" min="5" max="80" value="${E.m}" oninput="a2.textContent=this.value">
+ <label>${t('rainProb')}: <b id="a3">${E.r}</b>%</label><input id="s3" type="range" min="0" max="100" value="${E.r}" oninput="a3.textContent=this.value">
+ <button onclick="simulate()">${t('simulate')}</button><div id="so2"></div></div>`,
+al:()=>{const a=[];Z.forEach(z=>{if(z.k>=60)a.push(['red',t('alertStress'),t('alertStressBody',{n:z.n})]);
+  if(z.m<30)a.push(['amber',t('alertWater'),t('alertWaterBody',{n:z.n,m:z.m})])});
+  if(E.r>=60)a.push(['amber',t('alertRain'),t('alertRainBody')]);
+  return a.length?a.map(x=>`<div class="card alert ${x[0]}" onclick="tab='map';main()"><b>${x[1]}</b><br>${x[2]}</div>`).join(''):`<div class="card">${t('noAlerts')}</div>`},
+chat:()=>`<div class="card">${chat.map((m,i)=>`<div class="bubble ${m.ai?'ai':'me'}">${m.t}${m.ai?`<br><button class="spk" data-i="${i}">🔊</button>`:''}</div>`).join('')}
+ <div class="row"><input id="in" placeholder="${t('askPlaceholder')}">${SR?`<button class="icon mic" id="micBtn">🎤</button>`:''}<button class="icon" id="sendBtn" style="flex:0 0 60px">${t('send')}</button></div>
+ ${listening?`<p class="mut">${t('listening')}</p>`:''}</div>`,
+his:()=>{const H=getHistory();const st=(d)=>({avg:Math.round(d.reduce((a,b)=>a+b,0)/d.length),max:Math.max(...d),min:Math.min(...d)});
+ const sm=st(H.m);
+ return `<div class="card"><h3>${t('historyTitle')}</h3><b class="ok">${t('waterSaved')}: 1,250 L</b>
+ <div class="statrow"><div><small>${t('avg')} ${t('soilMoisture').split(' ')[0]}</small><br><b>${sm.avg}%</b></div>
+ <div><small>${t('best')}</small><br><b class="green">${sm.max}%</b></div><div><small>${t('worst')}</small><br><b class="red">${sm.min}%</b></div></div>
+ <button class="alt" id="csvBtn">${t('exportCsv')}</button></div>`+
+ [['soilMoistureChart',H.m,'#3c8d4a'],['stressRiskChart',H.k,'#b8402f'],['waterUsageChart',H.w,'#2f6b9a']].map(([k,d,c])=>`<div class="card"><b>${t(k)}</b>${chart(d,c)}</div>`).join('')},
+pro:()=>`<div class="card"><h3>${t('profileTitle')}</h3><p>${U.name}<br>${U.phone}<br>${U.email}</p></div>
+ <div class="card"><h3>${t('farmSettings')}</h3><p>${U.farm.name} · ${U.farm.loc}<br>${U.farm.crop} · ${optLabel(OPT_SOIL,U.farm.soil)} · ${U.farm.size} ${LANG=='ta'?'ஏக்கர்':'acres'} · ${optLabel(OPT_IRR,U.farm.irr)}</p><button class="alt" onclick="go('farm')">${t('editFarm')}</button></div>
+ <div class="card"><h3>${t('appSettings')}</h3><label>${t('language')}</label><select id="lg"><option value="en" ${LANG=='en'?'selected':''}>English</option><option value="ta" ${LANG=='ta'?'selected':''}>தமிழ்</option></select>
+ <label><input type="checkbox" checked style="width:auto"> ${t('notifications')}</label><br>
+ <label><input id="va" type="checkbox" ${LS('voiceOn')!==false?'checked':''} style="width:auto" onchange="SS('voiceOn',this.checked)"> ${t('voiceAssist')}</label>
+ <button onclick="SS('cs_session',null);U=null;go('login')">${t('logout')}</button></div>`
+};
+/* ---------- feature functions ---------- */
+function simulate(){
+  const tm=+s1.value,m=+s2.value,r=+s3.value,k=risk(tm,m,r);
+  so2.innerHTML=`<p>${t('currentRisk')}: <b>${K}%</b></p><p>${t('predictedRisk')}: <b class="big ${col(k)}">${k}%</b></p>${dec(decide(k,m,r),k)}
+  <p>${k>K?t('incRisk'):t('decRisk')}</p>`;
+}
+function analyse(src){
+  const out=$('#sr'),im=new Image();
+  im.onerror=()=>{out.innerHTML=`<p class="err">${t('invalidImage')}</p>`};
+  im.onload=()=>{try{const c=$('#cv').getContext('2d');c.drawImage(im,0,0,64,64);const d=c.getImageData(0,0,64,64).data;let bad=0;
+    for(let i=0;i<d.length;i+=4)if(d[i+1]<d[i]*1.05)bad++;
+    const leaf=Math.round(bad/4096*100),all=Math.round(.5*leaf+.5*K);
+    out.innerHTML=`<img src="${src}" style="max-width:100%;border-radius:10px;margin:8px 0">
+    <p>${leaf>35?t('possibleStressDetected'):t('leafHealthy')} (${leaf}%)</p>
+    <h3>${t('overallRisk')}: <span class="${col(all)}">${riskWord(all)} (${all}%)</span></h3>
+    ${[leaf>35&&t('leafStressDetected'),E.m<=35&&('💧 '+t('soilMoisture')),E.t>=32&&('🌡 '+t('temperature'))].filter(Boolean).map(x=>`<p>• ${x}</p>`).join('')}`}
+    catch(e){out.innerHTML=`<p class="err">${t('analysisFailed')}: `+e.message+'</p>'}};
+  im.src=src;
+}
+function scanImg(inp){
+  const f=inp.files&&inp.files[0],out=$('#sr');if(!f){out.innerHTML=`<p class="err">${t('noFileChosen')}</p>`;return}
+  out.innerHTML=`<p>${t('analysing')}</p>`;const rd=new FileReader();
+  rd.onerror=()=>{out.innerHTML=`<p class="err">${t('couldNotRead')}</p>`};
+  rd.onload=()=>analyse(rd.result);rd.readAsDataURL(f);
+}
+function sample(){
+  const c=document.createElement('canvas');c.width=c.height=200;const g=c.getContext('2d');
+  g.fillStyle='#2f8a3a';g.fillRect(0,0,200,200);
+  [[50,60,40,'#b8a23a'],[140,90,35,'#8a5a2a'],[90,150,30,'#c2a93c']].forEach(([x,y,r,cc])=>{g.fillStyle=cc;g.beginPath();g.arc(x,y,r,0,7);g.fill()});
+  $('#fname').textContent='sample-leaf';analyse(c.toDataURL('image/png'));
+}
+/* ---------- assistant + voice ---------- */
+/* To use Gemini instead of the rule-based answer() below, call the Gemini API from a backend
+   (never put an API key in this file) sending the farm/zone data as context. */
+function answer(q){
+  q=q.toLowerCase();const m=q.match(/(\d)/),z=m&&Z[m[1]-1],w=[...Z].sort((a,b)=>b.k-a.k)[0];
+  const isWhy=/why|ஏன்/.test(q),isWater=/water|irrigat|தண்ணீர்|நீர்|பாசன/.test(q),isForecast=/forecast|tomorrow|முன்னறிவி|நாளை/.test(q);
+  if(z&&isWhy)return LANG=='ta'
+    ?`மண்டலம் ${z.n} ${z.k>=60?'சிவப்பு':z.k>=35?'மஞ்சள்':'பச்சை'} ஏனெனில் மண் ஈரப்பதம் ${z.m}%, வெப்பநிலை ${z.t}°C, மழை நிகழ்தகவு ${z.r}%, கணிக்கப்பட்ட அழுத்தம் ${z.k}%.`
+    :`Zone ${z.n} is ${col(z.k)} because soil moisture is ${z.m}%, temperature is ${z.t}°C, rain probability is ${z.r}% and predicted stress is ${z.k}%.`;
+  if(z)return `${t('zone')} ${z.n}: ${t('soilMoisture')} ${z.m}%, ${t('temperature')} ${z.t}°C, ${t('rainProb')} ${z.r}%, ${t('cropStressRisk')} ${z.k}% → ${t('dec'+z.d)}.`;
+  if(isWater)return w.d=='WATER'
+    ?(LANG=='ta'?`மண்டலம் ${w.n}-இல் மண் ஈரப்பதம் குறைவாக (${w.m}%) மற்றும் மழை நிகழ்தகவு ${w.r}% மட்டுமே. மண்டலம் ${w.n}-க்கு நீர் ஊற்ற பரிந்துரைக்கப்படுகிறது.`
+      :`Zone ${w.n} has low soil moisture (${w.m}%) and only ${w.r}% rain probability. WATER is recommended for Zone ${w.n}.`)
+    :(LANG=='ta'?'இப்போது எந்த மண்டலத்திற்கும் தண்ணீர் தேவையில்லை. கண்காணிக்கவும்.':'No zone needs water right now. Keep watching.');
+  if(isForecast)return (LANG=='ta'?'அழுத்த முன்னறிவிப்பு: ':'Stress risk forecast: ')+F.map(x=>t(x.d)+' '+x.k+'% ('+t('dec'+x.a)+')').join(', ')+'.';
+  return LANG=='ta'?'நான் நீர்ப்பாசனம், மண்டல அபாயம் மற்றும் முன்னறிவிப்பு பற்றி பதிலளிக்க முடியும். "மண்டலம் 3 ஏன் சிவப்பு?" எனக் கேளுங்கள்.'
+    :'I can answer about watering, zone risk, and the forecast. Try "Why is Zone 3 red?"';
+}
+function askFarm(){const q=val('in');if(!q)return;$('#in').value='';const a=answer(q);chat.push({t:q.replace(/</g,'&lt;')},{ai:1,t:a});main();
+  if(LS('voiceOn')!==false)speak(a);}
+function speak(txt){
+  if(!('speechSynthesis' in window))return;
+  window.speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(txt.replace(/[🌱🌡💧🌧⚠️✅👋📷🔊🎤️]/g,''));
+  u.lang=LANG=='ta'?'ta-IN':'en-IN';window.speechSynthesis.speak(u);
+}
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+let rec=null;
+function toggleMic(){
+  if(!SR){err&&alert(t('micUnsupported'));return}
+  if(listening){rec&&rec.stop();return}
+  rec=new SR();rec.lang=LANG=='ta'?'ta-IN':'en-IN';rec.interimResults=false;rec.maxAlternatives=1;
+  rec.onstart=()=>{listening=true;main()};
+  rec.onend=()=>{listening=false;main()};
+  rec.onerror=()=>{listening=false;main()};
+  rec.onresult=(e)=>{const text=e.results[0][0].transcript;$('#in').value=text;askFarm()};
+  rec.start();
+}
+/* ---------- history + export ---------- */
+function getHistory(){const r=(a,b,i)=>Math.round(a+(b-a)*((Math.sin(i*2.7)+1)/2));
+  const H={m:[],k:[],w:[]};for(let i=0;i<7;i++){H.m.push(r(30,55,i));H.k.push(r(25,75,i+2));H.w.push(r(400,900,i+4))}return H}
+function chart(d,c){const mx=Math.max(...d),mn=Math.min(...d),p=d.map((v,i)=>`${i*50+10},${100-(v-mn)/(mx-mn||1)*80-10}`).join(' ');
+  return `<svg viewBox="0 0 310 110"><polyline fill="none" stroke="${c}" stroke-width="3" points="${p}"/></svg>`}
+function exportCsv(){
+  const H=getHistory();let csv=`${t('day')},${t('soilMoistureChart')},${t('stressRiskChart')},${t('waterUsageChart')}\n`;
+  for(let i=0;i<7;i++)csv+=`${i+1},${H.m[i]},${H.k[i]},${H.w[i]}\n`;
+  const blob=new Blob([csv],{type:'text/csv'}),a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);a.download='cropsense-history.csv';a.click();
+}
+go('splash');
+</script></body></html>
